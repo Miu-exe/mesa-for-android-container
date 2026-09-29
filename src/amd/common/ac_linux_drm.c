@@ -1107,6 +1107,15 @@ int ac_drm_query_pci_bus_info(ac_drm_device *dev, struct radeon_info *info)
          fprintf(stderr, "amdgpu: drmGetDevice2 failed.\n");
          return -1;
       }
+
+      /* SoC-integrated amdgpu-compatible GPUs (e.g. Samsung Xclipse/sgpu)
+       * sit on the platform bus and have no PCI address.
+       */
+      if (devinfo->bustype != DRM_BUS_PCI) {
+         drmFreeDevice(&devinfo);
+         return -1;
+      }
+
       info->pci.domain = devinfo->businfo.pci->domain;
       info->pci.bus = devinfo->businfo.pci->bus;
       info->pci.dev = devinfo->businfo.pci->dev;

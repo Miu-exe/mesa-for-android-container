@@ -805,7 +805,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .EXT_mutable_descriptor_type = true, /* Trivial promotion from VALVE. */
       .EXT_nested_command_buffer = true,
       .EXT_non_seamless_cube_map = true,
-      .EXT_pci_bus_info = true,
+      .EXT_pci_bus_info = pdev->info.pci.valid,
 #ifndef _WIN32
       .EXT_physical_device_drm = true,
 #endif
@@ -2540,7 +2540,8 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
       struct stat primary_stat = {0}, render_stat = {0};
 
       pdev->available_nodes = drm_device->available_nodes;
-      pdev->bus_info = *drm_device->businfo.pci;
+      if (drm_device->bustype == DRM_BUS_PCI)
+         pdev->bus_info = *drm_device->businfo.pci;
 
       if ((drm_device->available_nodes & (1 << DRM_NODE_PRIMARY)) &&
           stat(drm_device->nodes[DRM_NODE_PRIMARY], &primary_stat) != 0) {
@@ -2670,6 +2671,12 @@ create_drm_physical_device(struct vk_instance *vk_instance, struct _drmDevice *d
 #endif
 
    supported_device |= device->bustype == DRM_BUS_PCI && device->deviceinfo.pci->vendor_id == ATI_VENDOR_ID;
+
+   /* SoC GPUs driven by an amdgpu-compatible kernel driver (e.g. Samsung
+    * Xclipse on Exynos). radv_physical_device_try_create() rejects any
+    * device whose kernel driver doesn't identify itself as "amdgpu".
+    */
+   supported_device |= device->bustype == DRM_BUS_PLATFORM;
 
    if (!supported_device)
       return VK_ERROR_INCOMPATIBLE_DRIVER;
