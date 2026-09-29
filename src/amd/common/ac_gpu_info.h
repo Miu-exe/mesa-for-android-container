@@ -494,6 +494,15 @@ void ac_fill_compiler_info(struct radeon_info *info, struct drm_amdgpu_info_devi
 void ac_compute_driver_uuid(char *uuid, size_t size);
 
 void ac_compute_device_uuid(const struct radeon_info *info, char *uuid, size_t size);
+/* The gfx level of shader-visible resources (buffer/image descriptors and their formats).
+ * Xclipse is otherwise GFX10.3, but its texture units use the GFX11 formats and layouts.
+ */
+static inline enum amd_gfx_level
+ac_rsrc_gfx_level(const struct radeon_info *info)
+{
+   return info->is_xclipse ? GFX11 : info->gfx_level;
+}
+
 void ac_print_gpu_info(FILE *f, const struct radeon_info *info, int fd);
 int ac_get_gs_table_depth(enum amd_gfx_level gfx_level, enum radeon_family family);
 void ac_get_raster_config(const struct radeon_info *info, uint32_t *raster_config_p,

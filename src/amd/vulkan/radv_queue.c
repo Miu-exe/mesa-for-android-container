@@ -246,7 +246,7 @@ radv_set_ring_buffer(const struct radv_physical_device *pdev, struct radeon_wins
       .gfx10_oob_select = oob_select,
    };
 
-   ac_build_buffer_descriptor(pdev->info.gfx_level, &ac_state, desc);
+   ac_build_buffer_descriptor(ac_rsrc_gfx_level(&pdev->info), &ac_state, desc);
 }
 
 static void

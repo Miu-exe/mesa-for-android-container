@@ -332,8 +332,11 @@ ac_fill_compiler_info(struct radeon_info *info, struct drm_amdgpu_info_device *d
     */
    out->has_ngg_passthru_no_msg = info->family >= CHIP_NAVI23;
 
+   /* Xclipse shader cores behave like GFX11 here too. */
    out->local_invocation_ids_packed =
-      info->gfx_level >= GFX11 || (!info->has_graphics && info->family >= CHIP_MI200);
+      info->gfx_level >= GFX11 || info->is_xclipse ||
+      (!info->has_graphics && info->family >= CHIP_MI200);
+   out->gfx11_isa_encoding = info->is_xclipse;
    out->has_fmask = info->gfx_level <= GFX10_3;
 
    out->has_3d_cube_border_color_mipmap = info->has_graphics || info->family == CHIP_MI100;
@@ -869,7 +872,6 @@ ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
     * registers are GFX10.3, but the shader cores decode GFX11 instruction encodings.
     */
    info->is_xclipse = info->family == CHIP_VANGOGH && !info->pci.valid;
-   info->compiler_info.gfx11_isa_encoding = info->is_xclipse;
 
    /* The kernel can split large buffers in VRAM but not in GTT, so large
     * allocations can fail or cause buffer movement failures in the kernel.

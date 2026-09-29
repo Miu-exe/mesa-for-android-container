@@ -52,7 +52,7 @@ radv_make_texel_buffer_descriptor(struct radv_device *device, uint64_t va, VkFor
       .gfx10_oob_select = V_008F0C_OOB_SELECT_STRUCTURED_WITH_OFFSET,
    };
 
-   ac_build_buffer_descriptor(pdev->info.gfx_level, &ac_state, state);
+   ac_build_buffer_descriptor(ac_rsrc_gfx_level(&pdev->info), &ac_state, state);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL

@@ -19,6 +19,7 @@
 
 typedef struct {
    enum amd_gfx_level gfx_level;
+   enum amd_gfx_level rsrc_gfx_level;
    uint32_t address32_hi;
    uint32_t combined_image_sampler_desc_size;
    uint32_t combined_image_sampler_offset;
@@ -181,7 +182,7 @@ load_inline_buffer_descriptor(nir_builder *b, apply_layout_state *state, nir_def
 {
    uint32_t desc[4];
 
-   ac_build_raw_buffer_descriptor(state->gfx_level, (uint64_t)state->address32_hi << 32, 0xffffffff, desc);
+   ac_build_raw_buffer_descriptor(state->rsrc_gfx_level, (uint64_t)state->address32_hi << 32, 0xffffffff, desc);
 
    return nir_vec4(b, rsrc, nir_imm_int(b, desc[1]), nir_imm_int(b, desc[2]), nir_imm_int(b, desc[3]));
 }
@@ -571,6 +572,7 @@ radv_nir_apply_pipeline_layout(nir_shader *shader, struct radv_device *device, c
 
    apply_layout_state state = {
       .gfx_level = pdev->info.gfx_level,
+      .rsrc_gfx_level = ac_rsrc_gfx_level(&pdev->info),
       .address32_hi = pdev->info.address32_hi,
       .combined_image_sampler_desc_size = radv_get_combined_image_sampler_desc_size(pdev),
       .combined_image_sampler_offset = radv_get_combined_image_sampler_offset(pdev),

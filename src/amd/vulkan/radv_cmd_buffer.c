@@ -6883,7 +6883,7 @@ radv_flush_streamout_descriptors(struct radv_cmd_buffer *cmd_buffer)
          }
       }
 
-      ac_build_raw_buffer_descriptor(pdev->info.gfx_level, va, size, desc);
+      ac_build_raw_buffer_descriptor(ac_rsrc_gfx_level(&pdev->info), va, size, desc);
    }
 
    desc_va = radv_buffer_get_va(cmd_buffer->upload.upload_bo);
@@ -8021,7 +8021,7 @@ radv_bind_descriptor_sets(struct radv_cmd_buffer *cmd_buffer, const VkBindDescri
             uint64_t va = range->va + pBindDescriptorSetsInfo->pDynamicOffsets[dyn_idx];
             const uint32_t size = no_dynamic_bounds ? 0xffffffffu : range->size;
 
-            ac_build_raw_buffer_descriptor(pdev->info.gfx_level, va, size, dst);
+            ac_build_raw_buffer_descriptor(ac_rsrc_gfx_level(&pdev->info), va, size, dst);
          }
 
          descriptors_state->dynamic_descriptors_offsets[set_idx] = dynamic_offset_start;

@@ -1142,7 +1142,7 @@ radv_trap_handler_init(struct radv_device *device)
       .stride = 4, /* Used for VGPRs dump. */
    };
 
-   ac_build_buffer_descriptor(pdev->info.gfx_level, &ac_state, desc);
+   ac_build_buffer_descriptor(ac_rsrc_gfx_level(&pdev->info), &ac_state, desc);
 
    memcpy(device->tma_ptr, desc, sizeof(desc));
 

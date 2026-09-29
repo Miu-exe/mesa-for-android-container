@@ -436,7 +436,7 @@ ac_build_gfx10_texture_descriptor(const struct radeon_info *info, const struct a
 {
    const struct radeon_surf *surf = state->surf;
    const struct util_format_description *fmt_desc = util_format_description(state->format);
-   const uint32_t img_format = ac_get_gfx10_img_format(info->gfx_level, state);
+   const uint32_t img_format = ac_get_gfx10_img_format(ac_rsrc_gfx_level(info), state);
    const struct ac_surf_nbc_view *nbc_view = state->gfx10.nbc_view;
    uint32_t num_samples;
 
@@ -499,7 +499,7 @@ ac_build_gfx12_texture_descriptor(const struct radeon_info *info, const struct a
 {
    const struct radeon_surf *surf = state->surf;
    const struct util_format_description *fmt_desc = util_format_description(state->format);
-   const uint32_t img_format = ac_get_gfx10_img_format(info->gfx_level, state);
+   const uint32_t img_format = ac_get_gfx10_img_format(ac_rsrc_gfx_level(info), state);
    const uint32_t field_last_level = state->num_samples > 1 ? util_logbase2(state->num_samples) : state->last_level;
    const bool no_edge_clamp = state->num_levels > 1 && util_format_is_compressed(state->img_format) &&
                               !util_format_is_compressed(state->format);
