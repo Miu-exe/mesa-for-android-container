@@ -449,7 +449,7 @@ ac_build_gfx10_texture_descriptor(const struct radeon_info *info, const struct a
              S_00A004_WIDTH_LO(state->width - 1);
    desc[2] = S_00A008_WIDTH_HI((state->width - 1) >> 2) |
              S_00A008_HEIGHT(state->height - 1) |
-             S_00A008_RESOURCE_LEVEL(info->gfx_level < GFX11);
+             S_00A008_RESOURCE_LEVEL(ac_rsrc_gfx_level(info) < GFX11);
    desc[3] = S_00A00C_DST_SEL_X(ac_map_swizzle(state->swizzle[0])) |
              S_00A00C_DST_SEL_Y(ac_map_swizzle(state->swizzle[1])) |
              S_00A00C_DST_SEL_Z(ac_map_swizzle(state->swizzle[2])) |
@@ -478,7 +478,7 @@ ac_build_gfx10_texture_descriptor(const struct radeon_info *info, const struct a
       max_mip = nbc_view->num_levels - 1;
 
    const uint32_t min_lod_clamped = util_unsigned_fixed(CLAMP(state->min_lod, 0, 15), 8);
-   if (info->gfx_level >= GFX11) {
+   if (ac_rsrc_gfx_level(info) >= GFX11) {
       desc[1] |= S_00A004_MAX_MIP_GFX11(max_mip);
       desc[5] |= S_00A014_MIN_LOD_LO_GFX11(min_lod_clamped);
       desc[6] |= S_00A018_MIN_LOD_HI(min_lod_clamped >> 5);
