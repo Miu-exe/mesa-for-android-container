@@ -48,7 +48,9 @@ radv_wsi_get_prime_blit_queue(VkDevice _device)
       return &device->private_sdma_queue->vk;
    }
 
-   if (pdev->info.gfx_level >= GFX9 && !(instance->debug_flags & RADV_DEBUG_NO_DMA_BLIT)) {
+   /* Some SoC GPUs (e.g. Samsung Xclipse) have no SDMA engine. */
+   if (pdev->info.gfx_level >= GFX9 && pdev->info.ip[AMD_IP_SDMA].num_queues &&
+       !(instance->debug_flags & RADV_DEBUG_NO_DMA_BLIT)) {
 
       pdev->vk_queue_to_radv[pdev->num_queues++] = RADV_QUEUE_TRANSFER;
       const VkDeviceQueueCreateInfo queue_create = {
