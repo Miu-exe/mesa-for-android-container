@@ -434,10 +434,14 @@ ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    assert(info->drm_major == 3);
    info->is_amdgpu = true;
 
-   if (info->drm_minor < 42) {
+   /* SoC GPUs with an amdgpu-derived kernel driver (e.g. Samsung Xclipse
+    * "sgpu" on Android 5.10 kernels) report 3.40, which is enough for us.
+    */
+   const unsigned min_drm_minor = info->pci.valid ? 42 : 40;
+   if (info->drm_minor < min_drm_minor) {
       fprintf(stderr, "amdgpu: DRM version is %u.%u.%u, but this driver is "
-                      "only compatible with 3.42.0 (kernel 5.15+) or later.\n",
-              info->drm_major, info->drm_minor, info->drm_patchlevel);
+                      "only compatible with 3.%u.0 or later.\n",
+              info->drm_major, info->drm_minor, info->drm_patchlevel, min_drm_minor);
       return AC_QUERY_GPU_INFO_FAIL;
    }
 
@@ -610,10 +614,12 @@ ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    info->vram_size_kb = DIV_ROUND_UP(fix_vram_size(meminfo.vram.total_heap_size), 1024);
    info->vram_vis_size_kb = DIV_ROUND_UP(meminfo.cpu_accessible_vram.total_heap_size, 1024);
 
-   ac_drm_query_video_caps_info(dev, AMDGPU_INFO_VIDEO_CAPS_DECODE,
-                                sizeof(info->dec_caps), &(info->dec_caps));
-   ac_drm_query_video_caps_info(dev, AMDGPU_INFO_VIDEO_CAPS_ENCODE,
-                                sizeof(info->enc_caps), &(info->enc_caps));
+   if (info->drm_minor >= 41) {
+      ac_drm_query_video_caps_info(dev, AMDGPU_INFO_VIDEO_CAPS_DECODE,
+                                   sizeof(info->dec_caps), &(info->dec_caps));
+      ac_drm_query_video_caps_info(dev, AMDGPU_INFO_VIDEO_CAPS_ENCODE,
+                                   sizeof(info->enc_caps), &(info->enc_caps));
+   }
 
    /* Add some margin of error, though this shouldn't be needed in theory. */
    info->all_vram_visible = info->vram_size_kb * 0.9 < info->vram_vis_size_kb;
@@ -852,6 +858,12 @@ ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
 
    /* Set which chips have dedicated VRAM. */
    info->has_dedicated_vram = !(device_info.ids_flags & AMDGPU_IDS_FLAGS_FUSION);
+
+   /* Samsung's sgpu kernel driver doesn't set the FUSION flag even though
+    * Xclipse is integrated and exposes no VRAM heap at all.
+    */
+   if (info->has_dedicated_vram && !info->vram_size_kb)
+      info->has_dedicated_vram = false;
 
    /* The kernel can split large buffers in VRAM but not in GTT, so large
     * allocations can fail or cause buffer movement failures in the kernel.
