@@ -2287,6 +2287,7 @@ struct DeviceInfo {
    bool has_point_sample_accel = false;
    bool has_gfx6_mrt_export_bug = false;
    bool has_delay_alu = false;
+   bool has_vopd = false;
 
    int32_t scratch_global_offset_min;
    int32_t scratch_global_offset_max;
