@@ -658,7 +658,10 @@ radv_amdgpu_winsys_bo_create(struct radeon_winsys *_ws, uint64_t size, unsigned 
 
    if (flags & RADEON_FLAG_CPU_ACCESS)
       request.flags |= AMDGPU_GEM_CREATE_CPU_ACCESS_REQUIRED;
-   if (flags & RADEON_FLAG_NO_CPU_ACCESS) {
+   /* NO_CPU_ACCESS only matters for VRAM placement. Without any VRAM (e.g. Xclipse) it only
+    * prevents mmap of exported dma-bufs, which X servers like Termux:X11 rely on for DRI3.
+    */
+   if ((flags & RADEON_FLAG_NO_CPU_ACCESS) && ws->info.vram_size_kb) {
       bo->base.vram_no_cpu_access = initial_domain & RADEON_DOMAIN_VRAM;
       request.flags |= AMDGPU_GEM_CREATE_NO_CPU_ACCESS;
    }
