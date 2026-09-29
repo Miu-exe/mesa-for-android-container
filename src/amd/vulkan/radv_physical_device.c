@@ -2528,6 +2528,14 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
          pdev->rt_wave_size = 32;
    }
 
+   /* Xclipse hangs with wave32 shaders. */
+   if (pdev->info.is_xclipse) {
+      pdev->cs_wave_size = 64;
+      pdev->ps_wave_size = 64;
+      pdev->ge_wave_size = 64;
+      pdev->rt_wave_size = 64;
+   }
+
    radv_probe_video_decode(pdev);
    radv_probe_video_encode(pdev);
 

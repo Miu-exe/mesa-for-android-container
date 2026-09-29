@@ -127,7 +127,7 @@ radv_aco_convert_opts(struct aco_compiler_options *aco_info, const struct radv_n
    aco_info->compiler_info = &radv->info->compiler_info;
    aco_info->is_opengl = false;
    aco_info->optimisations_disabled = stage_key->optimisations_disabled;
-   aco_info->gfx_level = radv->info->gfx_level;
+   aco_info->gfx_level = radv->info->compiler_info.gfx11_isa_encoding ? GFX11 : radv->info->gfx_level;
    aco_info->family = radv->info->family;
    aco_info->address32_hi = radv->info->address32_hi;
 }

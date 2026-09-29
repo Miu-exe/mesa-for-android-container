@@ -236,7 +236,7 @@ static bool handle_env_var_force_family(struct radeon_info *info)
 void
 ac_fill_compiler_info(struct radeon_info *info, struct drm_amdgpu_info_device *device_info)
 {
-   STATIC_ASSERT(sizeof(struct ac_compiler_info) == 52);
+   STATIC_ASSERT(sizeof(struct ac_compiler_info) == 56);
 
    struct ac_compiler_info *out = &info->compiler_info;
 
@@ -864,6 +864,12 @@ ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
     */
    if (info->has_dedicated_vram && !info->vram_size_kb)
       info->has_dedicated_vram = false;
+
+   /* Xclipse 920 is reported as VanGogh on the platform bus. Its command processor and
+    * registers are GFX10.3, but the shader cores decode GFX11 instruction encodings.
+    */
+   info->is_xclipse = info->family == CHIP_VANGOGH && !info->pci.valid;
+   info->compiler_info.gfx11_isa_encoding = info->is_xclipse;
 
    /* The kernel can split large buffers in VRAM but not in GTT, so large
     * allocations can fail or cause buffer movement failures in the kernel.
@@ -1858,6 +1864,7 @@ void ac_print_gpu_info(FILE *f, const struct radeon_info *info, int fd)
    fprintf(f, "    min_alloc_size = %u\n", info->min_alloc_size);
    fprintf(f, "    address32_hi = 0x%x\n", info->address32_hi);
    fprintf(f, "    has_dedicated_vram = %u\n", info->has_dedicated_vram);
+   fprintf(f, "    is_xclipse = %u\n", info->is_xclipse);
    fprintf(f, "    all_vram_visible = %u\n", info->all_vram_visible);
    fprintf(f, "    virtual_address_max = %" PRIx64 "\n", info->virtual_address_max);
    fprintf(f, "    max_tcc_blocks = %i\n", info->max_tcc_blocks);

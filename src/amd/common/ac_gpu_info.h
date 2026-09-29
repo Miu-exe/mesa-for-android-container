@@ -171,6 +171,11 @@ struct ac_compiler_info {
    uint32_t has_attr_ring : 1;
    uint32_t mesh_fast_launch_2 : 1;
 
+   /* Shader instructions use the GFX11 encoding although the chip is otherwise GFX10.3
+    * (Samsung Xclipse 920). Shaders must be wave64 and must not use s_delay_alu.
+    */
+   uint32_t gfx11_isa_encoding : 1;
+
    /* GFX6-7: limit TCS workgroup to 16 patches for better performance. */
    uint32_t smaller_tcs_workgroups : 1;
 
@@ -238,6 +243,7 @@ struct radeon_info {
    uint32_t pci_rev_id;
    enum radeon_family family;
    enum amd_gfx_level gfx_level;
+   bool is_xclipse; /* Samsung Xclipse (amdgpu-derived "sgpu" kernel driver) */
    uint32_t family_id;
    uint32_t chip_external_rev;
    uint32_t chip_rev; /* 0 = A0, 1 = A1, etc. */

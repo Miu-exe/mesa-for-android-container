@@ -86,6 +86,8 @@ init_program(Program* program, Stage stage, const struct aco_shader_info* info,
    program->dev.physical_vgprs = options->compiler_info->num_physical_wave64_vgprs_per_simd;
    program->dev.vgpr_alloc_granule = options->compiler_info->wave64_vgpr_alloc_granularity;
    program->dev.vgpr_limit = options->compiler_info->max_vgpr_alloc;
+   program->dev.has_delay_alu =
+      program->gfx_level >= GFX11 && !options->compiler_info->gfx11_isa_encoding;
 
    /* preserve_s2 works by removing the first 4 SGPRs from use, unless they're a precolored
     * definition/operand. */
