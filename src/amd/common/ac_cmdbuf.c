@@ -615,7 +615,8 @@ gfx10_init_graphics_preamble_state(const struct ac_preamble_state *state,
    ac_pm4_set_reg(pm4, R_030A00_PA_SU_LINE_STIPPLE_VALUE, 0);
    ac_pm4_set_reg(pm4, R_030A04_PA_SC_LINE_STIPPLE_STATE, 0);
 
-   if (info->gfx_level >= GFX11) {
+   /* Xclipse needs the GFX11 pixel pipe stat setup for occlusion queries. */
+   if (info->gfx_level >= GFX11 || info->is_xclipse) {
       uint64_t rb_mask = BITFIELD64_MASK(info->max_render_backends);
 
       ac_pm4_cmd_add(pm4, PKT3(PKT3_EVENT_WRITE, 2, 0));

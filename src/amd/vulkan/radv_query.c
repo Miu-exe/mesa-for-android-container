@@ -99,7 +99,8 @@ radv_emit_event_write(const struct radeon_info *info, struct radv_cmd_stream *cs
          radeon_emit(PKT3(PKT3_EVENT_WRITE_ZPASS, 1, 0));
       } else {
          radeon_emit(PKT3(PKT3_EVENT_WRITE, 2, 0));
-         if (info->gfx_level >= GFX11) {
+         /* Xclipse ignores ZPASS_DONE and counts like GFX11 (as Samsung's driver does). */
+         if (info->gfx_level >= GFX11 || info->is_xclipse) {
             radeon_emit(EVENT_TYPE(V_028A90_PIXEL_PIPE_STAT_DUMP) | EVENT_INDEX(1));
          } else {
             radeon_emit(EVENT_TYPE(V_028A90_ZPASS_DONE) | EVENT_INDEX(1));
