@@ -90,6 +90,8 @@ init_program(Program* program, Stage stage, const struct aco_shader_info* info,
    program->dev.has_delay_alu =
       program->gfx_level >= GFX11 && !options->compiler_info->gfx11_isa_encoding;
    program->dev.has_vopd = program->dev.has_delay_alu;
+   program->dev.gfx11_encoding_only =
+      program->gfx_level >= GFX11 && options->compiler_info->gfx11_isa_encoding;
 
    /* preserve_s2 works by removing the first 4 SGPRs from use, unless they're a precolored
     * definition/operand. */

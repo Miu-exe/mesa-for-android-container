@@ -381,6 +381,8 @@ typedef struct {
    unsigned color_is_int8;
    unsigned color_is_int10;
    bool alpha_to_one;
+   /* Export MRTZ after the color exports, so it is the final export (Samsung Xclipse). */
+   bool mrtz_after_color;
 
    /* Vulkan only */
    unsigned enable_mrt_output_nan_fixup;

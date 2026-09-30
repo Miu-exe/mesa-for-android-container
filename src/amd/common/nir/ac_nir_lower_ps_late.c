@@ -655,7 +655,10 @@ export_ps_outputs(nir_builder *b, lower_ps_state *s)
       mrtz_alpha = s->color[0][3];
 
    bool progress = false;
-   if (!s->options->no_depth_export)
+   /* Dual-source blend swizzling expects the color exports to be the last ones. */
+   const bool mrtz_last = s->options->mrtz_after_color && !s->options->no_color_export &&
+                          !s->dual_src_blend_swizzle;
+   if (!s->options->no_depth_export && !mrtz_last)
       progress |= emit_ps_mrtz_export(b, s, mrtz_alpha);
 
    /* When non-monolithic shader, RADV export mrtz in main part (except on
@@ -708,6 +711,9 @@ export_ps_outputs(nir_builder *b, lower_ps_state *s)
       for (int cbuf = 0; cbuf < MAX_DRAW_BUFFERS; cbuf++)
          emit_ps_color_export(b, s, cbuf, cbuf);
    }
+
+   if (!s->options->no_depth_export && mrtz_last)
+      emit_ps_mrtz_export(b, s, mrtz_alpha);
 
    if (s->exp_num) {
       /* Move exports to the end to avoid mixing alu and exports. */

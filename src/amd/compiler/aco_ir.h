@@ -2288,6 +2288,8 @@ struct DeviceInfo {
    bool has_gfx6_mrt_export_bug = false;
    bool has_delay_alu = false;
    bool has_vopd = false;
+   /* GFX11 instruction encoding on an otherwise GFX10.3 chip (Samsung Xclipse). */
+   bool gfx11_encoding_only = false;
 
    int32_t scratch_global_offset_min;
    int32_t scratch_global_offset_max;

@@ -2472,11 +2472,19 @@ lower_to_hw_instr(Program* program)
                   if (program->gfx_level >= GFX11)
                      target =
                         program->has_color_exports ? V_008DFC_SQ_EXP_MRT : V_008DFC_SQ_EXP_MRTZ;
+                  /* Xclipse: follow Samsung's compiler, which clears exec before the final
+                   * export of a discarded wave and ends it with s_endpgm 1. Without this,
+                   * waves that discard every pixel while depth export is enabled hang the GPU.
+                   */
+                  const bool xclipse_ps_exit =
+                     program->dev.gfx11_encoding_only && program->stage == fragment_fs;
+                  if (xclipse_ps_exit)
+                     copy_constant_sgpr(bld, Definition(exec, bld.lm), 0);
                   if (program->stage == fragment_fs)
                      bld.exp(aco_opcode::exp, Operand(v1), Operand(v1), Operand(v1), Operand(v1), 0,
                              target, false, true, true);
 
-                  bld.sopp(aco_opcode::s_endpgm);
+                  bld.sopp(aco_opcode::s_endpgm, xclipse_ps_exit ? 1 : 0);
 
                   bld.reset(&ctx.instructions);
                }
