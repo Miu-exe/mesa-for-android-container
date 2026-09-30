@@ -418,8 +418,11 @@ radv_set_vs_output_param(struct radv_device *device, const struct nir_shader *ni
    /* Implicit primitive ID for VS and TES is added by ac_nir_lower_legacy_vs / ac_nir_lower_ngg,
     * it can be configured as either a per-vertex or per-primitive output depending on the GPU.
     */
-   const bool implicit_prim_id_per_prim =
-      export_prim_id && info->is_ngg && pdev->info.gfx_level >= GFX10_3 && nir->info.stage == MESA_SHADER_VERTEX;
+   /* Xclipse doesn't handle per-primitive parameter exports from NGG; Samsung's driver passes the
+    * primitive ID per vertex through LDS, like GFX10.
+    */
+   const bool implicit_prim_id_per_prim = export_prim_id && info->is_ngg && pdev->info.gfx_level >= GFX10_3 &&
+                                          !pdev->info.is_xclipse && nir->info.stage == MESA_SHADER_VERTEX;
    const bool implicit_prim_id_per_vertex =
       export_prim_id && !implicit_prim_id_per_prim &&
       (nir->info.stage == MESA_SHADER_VERTEX || nir->info.stage == MESA_SHADER_TESS_EVAL);
