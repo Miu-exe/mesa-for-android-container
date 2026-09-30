@@ -330,7 +330,8 @@ ac_fill_compiler_info(struct radeon_info *info, struct drm_amdgpu_info_device *d
     * the allocation of GS space in passthrough mode, when they set
     * PRIMGEN_PASSTHRU_NO_MSG.
     */
-   out->has_ngg_passthru_no_msg = info->family >= CHIP_NAVI23;
+   /* Samsung's driver always uses PRIMGEN_PASSTHRU_NO_MSG on Xclipse (no GS_ALLOC_REQ). */
+   out->has_ngg_passthru_no_msg = info->family >= CHIP_NAVI23 || info->is_xclipse;
 
    /* Xclipse shader cores behave like GFX11 here too. */
    out->local_invocation_ids_packed =
