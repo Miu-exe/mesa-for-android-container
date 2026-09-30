@@ -809,6 +809,14 @@ gather_shader_info_fs(const struct radv_device *device, const nir_shader *nir,
    info->ps.viewport_index_input = nir->info.inputs_read & VARYING_BIT_VIEWPORT;
    info->ps.writes_z = nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DEPTH);
    info->ps.writes_stencil = nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_STENCIL);
+
+   /* With early fragment tests, depth/stencil written by the shader are ignored. Xclipse hangs when
+    * the export stays enabled together with DEPTH_BEFORE_SHADER, and Samsung's driver drops it too.
+    */
+   if (pdev->info.is_xclipse && nir->info.fs.early_fragment_tests) {
+      info->ps.writes_z = false;
+      info->ps.writes_stencil = false;
+   }
    info->ps.writes_sample_mask = nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK);
    info->ps.reads_sample_mask_in = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_SAMPLE_MASK_IN);
    info->ps.reads_sample_id = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_SAMPLE_ID);

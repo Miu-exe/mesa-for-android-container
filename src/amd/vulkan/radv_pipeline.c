@@ -11,6 +11,7 @@
 #include "radv_pipeline.h"
 #include "meta/radv_meta.h"
 #include "nir/nir.h"
+#include "nir/nir_builder.h"
 #include "nir/radv_nir.h"
 #include "spirv/nir_spirv.h"
 #include "util/disk_cache.h"
@@ -244,6 +245,19 @@ non_uniform_access_callback(const nir_src *src, void *_)
    return nir_chase_binding(*src).success ? 0x2 : 0x3;
 }
 
+/* Drop gl_FragDepth / gl_FragStencilRefARB stores (early fragment tests ignore them). */
+static bool
+radv_remove_ps_depth_stencil_output(nir_builder *b, nir_intrinsic_instr *intrin, void *data)
+{
+   if (intrin->intrinsic != nir_intrinsic_store_output)
+      return false;
+   const unsigned loc = nir_intrinsic_io_semantics(intrin).location;
+   if (loc != FRAG_RESULT_DEPTH && loc != FRAG_RESULT_STENCIL)
+      return false;
+   nir_instr_remove(&intrin->instr);
+   return true;
+}
+
 void
 radv_postprocess_nir(struct radv_device *device, const struct radv_graphics_state_key *gfx_state,
                      struct radv_shader_stage *stage)
@@ -460,6 +474,10 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_graphics_stat
           */
          late_options.alpha_to_coverage_via_mrtz = stage->info.ps.writes_mrt0_alpha;
       }
+
+      if (pdev->info.is_xclipse && stage->nir->info.fs.early_fragment_tests)
+         NIR_PASS(_, stage->nir, nir_shader_intrinsics_pass, radv_remove_ps_depth_stencil_output,
+                  nir_metadata_control_flow, NULL);
 
       NIR_PASS(_, stage->nir, ac_nir_lower_ps_late, &late_options);
    }
