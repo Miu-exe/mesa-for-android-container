@@ -6723,7 +6723,7 @@ radv_write_vertex_descriptor(const struct radv_cmd_buffer *cmd_buffer, const str
        * - 3: offset >= NUM_RECORDS (Raw)
        */
       int oob_select = stride ? V_008F0C_OOB_SELECT_STRUCTURED : V_008F0C_OOB_SELECT_RAW;
-      rsrc_word3 |= S_008F0C_OOB_SELECT(oob_select) | S_008F0C_RESOURCE_LEVEL(chip < GFX11);
+      rsrc_word3 |= S_008F0C_OOB_SELECT(oob_select) | S_008F0C_RESOURCE_LEVEL(ac_rsrc_gfx_level(&pdev->info) < GFX11);
    }
 
    uint64_t va = vbo_info.va;
@@ -9211,7 +9211,8 @@ radv_CmdSetVertexInputEXT(VkCommandBuffer commandBuffer, uint32_t vertexBindingD
    vertex_input.nontrivial_formats = 0;
    vertex_input.bindings_match_attrib = true;
 
-   enum amd_gfx_level chip = pdev->info.gfx_level;
+   /* Vertex buffer descriptors use the resource format numbering (GFX11 on Xclipse). */
+   enum amd_gfx_level chip = ac_rsrc_gfx_level(&pdev->info);
    bool alpha_adjust = pdev->info.compiler_info.has_vtx_format_alpha_adjust_bug;
    const struct ac_vtx_format_info *vtx_info_table = ac_get_vtx_format_info_table(chip, alpha_adjust);
 
@@ -9255,7 +9256,7 @@ radv_CmdSetVertexInputEXT(VkCommandBuffer commandBuffer, uint32_t vertexBindingD
       if (vtx_info->has_hw_format & BITFIELD_BIT(vtx_info->num_channels - 1)) {
          const uint32_t hw_format = vtx_info->hw_format[vtx_info->num_channels - 1];
 
-         if (pdev->info.gfx_level >= GFX10) {
+         if (chip >= GFX10) {
             vertex_input.non_trivial_format[loc] = vtx_info->dst_sel | S_008F0C_FORMAT_GFX10(hw_format);
          } else {
             vertex_input.non_trivial_format[loc] =

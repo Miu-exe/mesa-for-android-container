@@ -710,7 +710,8 @@ radv_pipeline_init_vertex_input_state(const struct radv_device *device, struct r
    struct radv_dynamic_state *dynamic = &pipeline->dynamic_state;
 
    if (vs->info.vs.use_per_attribute_vb_descs) {
-      const enum amd_gfx_level gfx_level = pdev->info.gfx_level;
+      /* Vertex buffer descriptors use the resource format numbering (GFX11 on Xclipse). */
+      const enum amd_gfx_level gfx_level = ac_rsrc_gfx_level(&pdev->info);
       const bool alpha_adjust = pdev->info.compiler_info.has_vtx_format_alpha_adjust_bug;
       const struct ac_vtx_format_info *vtx_info_table = ac_get_vtx_format_info_table(gfx_level, alpha_adjust);
 
@@ -759,7 +760,7 @@ radv_pipeline_init_vertex_input_state(const struct radv_device *device, struct r
          }
 
          if (vtx_info->has_hw_format & BITFIELD_BIT(vtx_info->num_channels - 1)) {
-            if (pdev->info.gfx_level >= GFX10) {
+            if (gfx_level >= GFX10) {
                dynamic->vertex_input.non_trivial_format[i] = vtx_info->dst_sel | S_008F0C_FORMAT_GFX10(hw_format);
             } else {
                dynamic->vertex_input.non_trivial_format[i] = vtx_info->dst_sel |
