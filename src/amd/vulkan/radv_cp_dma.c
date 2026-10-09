@@ -157,6 +157,10 @@ radv_cs_cp_dma_prefetch(const struct radv_device *device, struct radv_cmd_stream
    enum amd_gfx_level gfx_level = pdev->info.gfx_level;
    uint32_t header = 0, command = 0;
 
+   /* Samsung's driver never prefetches into L2 with CP DMA on Xclipse. */
+   if (pdev->info.is_xclipse)
+      return;
+
    if (gfx_level >= GFX11)
       size = MIN2(size, 32768 - SI_CPDMA_ALIGNMENT);
 

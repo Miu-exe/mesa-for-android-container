@@ -798,6 +798,12 @@ void ac_compute_late_alloc(const struct radeon_info *info, bool ngg, bool ngg_cu
    if (info->min_good_cu_per_sa <= 2)
       return;
 
+   /* Xclipse randomly hangs with late alloc (and the CU mask and parameter cache oversubscription
+    * that come with it). Samsung's driver never enables it either.
+    */
+   if (info->is_xclipse)
+      return;
+
    /* If scratch is used with late alloc, the GPU could deadlock if PS uses scratch too. A more
     * complicated computation is needed to enable late alloc with scratch (see PAL).
     */

@@ -593,7 +593,9 @@ gfx10_init_graphics_preamble_state(const struct ac_preamble_state *state,
     * a single primitive shader subgroup.
     */
    ac_pm4_set_reg(pm4, R_028C50_PA_SC_NGG_MODE_CNTL,
-                  S_028C50_MAX_DEALLOCS_IN_WAVE(info->gfx_level >= GFX11 ? 16 : 512));
+                  S_028C50_MAX_DEALLOCS_IN_WAVE(info->gfx_level >= GFX11 ? 16 : info->is_xclipse ? 256 : 512));
+   if (info->is_xclipse) /* as programmed by Samsung's driver */
+      ac_pm4_set_reg(pm4, R_028C5C_VGT_OUT_DEALLOC_CNTL, 16);
    if (info->gfx_level < GFX11)
       ac_pm4_set_reg(pm4, R_028C58_VGT_VERTEX_REUSE_BLOCK_CNTL, 14); /* Reuse for legacy (non-NGG) only. */
 

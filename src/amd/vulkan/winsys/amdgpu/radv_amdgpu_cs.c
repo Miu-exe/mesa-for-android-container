@@ -1628,7 +1628,14 @@ radv_amdgpu_ctx_create(struct radeon_winsys *_ws, enum radeon_ctx_priority prior
    if (!ctx)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
-   r = ac_drm_cs_ctx_create2(ws->dev, amdgpu_priority, &ctx->ctx_handle);
+   /* Samsung's driver creates its contexts with HIGH priority on Xclipse. Normal-priority contexts
+    * are spread over the GFX rings by the kernel, which randomly hangs at the first submission.
+    */
+   if (ws->info.is_xclipse && amdgpu_priority == AMDGPU_CTX_PRIORITY_NORMAL &&
+       !ac_drm_cs_ctx_create2(ws->dev, AMDGPU_CTX_PRIORITY_HIGH, &ctx->ctx_handle))
+      r = 0;
+   else
+      r = ac_drm_cs_ctx_create2(ws->dev, amdgpu_priority, &ctx->ctx_handle);
    if (r && r == -EACCES) {
       result = VK_ERROR_NOT_PERMITTED;
       goto fail_create;
@@ -1889,6 +1896,12 @@ radv_amdgpu_cs_submit(struct radv_amdgpu_ctx *ctx, struct radv_amdgpu_cs_request
       chunk_data[i].ib_data.ip_instance = request->ip_instance;
       chunk_data[i].ib_data.ring = request->ring;
       chunk_data[i].ib_data.flags = ib->flags;
+
+      /* Samsung's driver has the kernel emit a full cache sync before the first IB of every
+       * submission on Xclipse.
+       */
+      if (i == 0 && ctx->ws->info.is_xclipse)
+         chunk_data[i].ib_data.flags |= AMDGPU_IB_FLAG_EMIT_MEM_SYNC;
    }
 
    assert(chunk_data[request->number_of_ibs - 1].ib_data.ip_type == request->ip_type);
