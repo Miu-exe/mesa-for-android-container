@@ -17,6 +17,7 @@
 #include "radv_device_memory.h"
 #include "radv_image.h"
 #include "radv_rmv.h"
+#include "ac_shadowed_regs.h"
 #include "vk_semaphore.h"
 #include "vk_sync.h"
 
@@ -680,6 +681,22 @@ radv_emit_graphics(struct radv_device *device, struct radv_cmd_stream *cs)
    bool has_clear_state = pdev->info.has_clear_state;
    int i;
 
+   /* The Xclipse kernel driver doesn't set up the clear state buffer, so CLEAR_STATE doesn't reset
+    * the context registers and they keep whatever the previous user of the GPU left in them. Write
+    * the CLEAR_STATE values explicitly instead; the rest of RADV relies on them.
+    */
+   const bool emulate_clear_state = has_clear_state && pdev->info.is_xclipse && !device->uses_shadow_regs;
+   if (emulate_clear_state) {
+      struct ac_pm4_state *clear_state = ac_emulate_clear_state(&pdev->info);
+      if (!clear_state)
+         return;
+
+      /* Also keep the 512 dwords the caller reserved for the rest of the preamble. */
+      radeon_check_space(device->ws, cs->b, clear_state->ndw + 512);
+      ac_pm4_emit_commands(cs->b, clear_state);
+      ac_pm4_free_state(clear_state);
+   }
+
    struct ac_pm4_state *pm4 = ac_pm4_create_sized(&pdev->info, false, 512, false);
    if (!pm4)
       return;
@@ -689,7 +706,7 @@ radv_emit_graphics(struct radv_device *device, struct radv_cmd_stream *cs)
       ac_pm4_cmd_add(pm4, CC0_UPDATE_LOAD_ENABLES(1));
       ac_pm4_cmd_add(pm4, CC1_UPDATE_SHADOW_ENABLES(1));
 
-      if (has_clear_state) {
+      if (has_clear_state && !emulate_clear_state) {
          ac_pm4_cmd_add(pm4, PKT3(PKT3_CLEAR_STATE, 0, 0));
          ac_pm4_cmd_add(pm4, 0);
       }
