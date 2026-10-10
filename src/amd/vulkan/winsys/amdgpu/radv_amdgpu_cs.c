@@ -1646,6 +1646,12 @@ radv_amdgpu_ctx_create(struct radeon_winsys *_ws, enum radeon_ctx_priority prior
    }
    ctx->ws = ws;
 
+   /* Xclipse: no user fence (see radv_amdgpu_cs_has_user_fence). */
+   if (ws->info.is_xclipse) {
+      *rctx = (struct radeon_winsys_ctx *)ctx;
+      return VK_SUCCESS;
+   }
+
    assert(AMDGPU_HW_IP_NUM * MAX_RINGS_PER_TYPE * 4 * sizeof(uint64_t) <= 4096);
    result = ws->base.buffer_create(&ws->base, 4096, 8, RADEON_DOMAIN_GTT,
                                    RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING, RADV_BO_PRIORITY_CS, 0,
@@ -1676,7 +1682,8 @@ radv_amdgpu_ctx_destroy(struct radeon_winsys_ctx *rwctx)
       }
    }
 
-   ctx->ws->base.buffer_destroy(&ctx->ws->base, ctx->fence_bo);
+   if (ctx->fence_bo)
+      ctx->ws->base.buffer_destroy(&ctx->ws->base, ctx->fence_bo);
    ac_drm_cs_ctx_free(ctx->ws->dev, ctx->ctx_handle);
    FREE(ctx);
 }
@@ -1837,8 +1844,16 @@ radv_amdgpu_cs_alloc_timeline_syncobj_chunk(struct radv_winsys_sem_counts *count
 }
 
 static bool
-radv_amdgpu_cs_has_user_fence(struct radv_amdgpu_cs_request *request)
+radv_amdgpu_cs_has_user_fence(const struct radv_amdgpu_ctx *ctx, struct radv_amdgpu_cs_request *request)
 {
+   /* The kernel binds the user fence BO into GART, and freeing it later flushes the GART TLB
+    * through MMIO. On Xclipse (sgpu) that write can land while the GPU is power-gated between jobs
+    * (IFPO), which hangs the bus and resets the phone. RADV never reads the user fence, and
+    * Samsung's driver doesn't use one either.
+    */
+   if (ctx->ws->info.is_xclipse)
+      return false;
+
    return request->ip_type != AMDGPU_HW_IP_UVD && request->ip_type != AMDGPU_HW_IP_VCE &&
           request->ip_type != AMDGPU_HW_IP_UVD_ENC && request->ip_type != AMDGPU_HW_IP_VCN_DEC &&
           request->ip_type != AMDGPU_HW_IP_VCN_ENC && request->ip_type != AMDGPU_HW_IP_VCN_JPEG;
@@ -1857,7 +1872,7 @@ radv_amdgpu_cs_submit(struct radv_amdgpu_ctx *ctx, struct radv_amdgpu_cs_request
    void *wait_syncobj = NULL, *signal_syncobj = NULL;
    int i;
    VkResult result = VK_SUCCESS;
-   bool has_user_fence = radv_amdgpu_cs_has_user_fence(request);
+   bool has_user_fence = radv_amdgpu_cs_has_user_fence(ctx, request);
    uint32_t queue_syncobj = radv_amdgpu_ctx_queue_syncobj(ctx, request->ip_type, request->ring);
    bool *queue_syncobj_wait = &ctx->queue_syncobj_wait[request->ip_type][request->ring];
 
