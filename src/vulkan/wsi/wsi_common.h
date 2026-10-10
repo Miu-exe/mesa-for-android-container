@@ -134,6 +134,13 @@ struct wsi_device {
        */
       bool xwaylandWaitReady;
 
+      /* Wait for fences before presenting in every present mode
+       * (MESA_VK_WSI_X11_WAIT_READY). For X servers that read DRI3 buffers
+       * without waiting for their implicit fences, e.g. Termux:X11, where
+       * Android's compositor otherwise shows partly rendered frames.
+       */
+      bool waitReadyAlways;
+
       /* adds an extra minImageCount when running under xwayland */
       bool extra_xwayland_image;
 

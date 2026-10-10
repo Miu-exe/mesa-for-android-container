@@ -1648,6 +1648,9 @@ x11_needs_wait_for_fences(const struct wsi_device *wsi_device,
                           struct wsi_x11_connection *wsi_conn,
                           VkPresentModeKHR present_mode)
 {
+   if (wsi_device->x11.waitReadyAlways)
+      return true;
+
    if (wsi_conn->is_xwayland && !wsi_device->x11.xwaylandWaitReady) {
       return false;
    }
@@ -2950,6 +2953,8 @@ wsi_x11_init_wsi(struct wsi_device *wsi_device,
             driQueryOptionb(dri_options, "vk_x11_ignore_suboptimal");
       }
    }
+
+   wsi_device->x11.waitReadyAlways = debug_get_bool_option("MESA_VK_WSI_X11_WAIT_READY", false);
 
    wsi->base.get_support = x11_surface_get_support;
    wsi->base.get_capabilities2 = x11_surface_get_capabilities2;
