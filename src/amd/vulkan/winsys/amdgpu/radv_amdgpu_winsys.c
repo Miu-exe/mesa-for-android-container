@@ -294,6 +294,10 @@ radv_amdgpu_winsys_create(int fd, uint64_t debug_flags, uint64_t perftest_flags,
    ws->debug_all_bos = !!(debug_flags & RADV_DEBUG_ALL_BOS);
    ws->debug_log_bos = debug_flags & RADV_DEBUG_HANG;
    ws->dump_ibs = !!(debug_flags & RADV_DEBUG_DUMP_IBS);
+   if (ws->info.is_xclipse) {
+      ws->xclipse_min_freq_khz = debug_get_num_option("RADV_XCLIPSE_MIN_FREQ", 0);
+      ws->xclipse_min_freq_ms = debug_get_num_option("RADV_XCLIPSE_MIN_FREQ_MS", 200);
+   }
 
    if (debug_flags & RADV_DEBUG_DUMP_BO_HISTORY) {
       ws->bo_history_logfile = fopen("/tmp/radv_bo_history.log", "w+");

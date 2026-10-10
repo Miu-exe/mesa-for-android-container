@@ -1984,6 +1984,21 @@ radv_amdgpu_cs_submit(struct radv_amdgpu_ctx *ctx, struct radv_amdgpu_cs_request
    chunks[num_chunks].chunk_data = (uintptr_t)&bo_list_in;
    num_chunks++;
 
+   /* Samsung sgpu: ask for a minimum GPU clock while submitting (its MIN_FREQ_LOCK chunk, a PM QoS
+    * request that expires after duration_ms). The clock must be one of the GPU's frequency steps.
+    */
+   struct {
+      uint32_t start_offset_ms;
+      uint32_t duration_ms;
+      uint32_t clock_khz;
+   } min_freq_lock = {0, ctx->ws->xclipse_min_freq_ms, ctx->ws->xclipse_min_freq_khz};
+   if (ctx->ws->xclipse_min_freq_khz) {
+      chunks[num_chunks].chunk_id = 0x12; /* AMDGPU_CHUNK_ID_MIN_FREQ_LOCK in sgpu */
+      chunks[num_chunks].length_dw = sizeof(min_freq_lock) / 4;
+      chunks[num_chunks].chunk_data = (uintptr_t)&min_freq_lock;
+      num_chunks++;
+   }
+
    /* The kernel returns -ENOMEM with many parallel processes using GDS such as test suites quite
     * often, but it eventually succeeds after enough attempts. This happens frequently with dEQP
     * using NGG streamout.

@@ -32,6 +32,10 @@ struct radv_amdgpu_winsys {
    bool debug_all_bos;
    bool debug_log_bos;
    bool dump_ibs;
+   /* Xclipse: minimum GPU clock (kHz) requested with every submission, and for how long (ms)
+    * (RADV_XCLIPSE_MIN_FREQ, RADV_XCLIPSE_MIN_FREQ_MS; 0 = off). */
+   uint32_t xclipse_min_freq_khz;
+   uint32_t xclipse_min_freq_ms;
    FILE *bo_history_logfile;
    bool chain_ib;
    bool zero_all_vram_allocs;
