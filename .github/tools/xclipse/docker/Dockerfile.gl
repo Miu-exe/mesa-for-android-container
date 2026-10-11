@@ -1,0 +1,7 @@
+FROM mesa-cross-arm64
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    libxcb-glx0-dev:arm64 libxxf86vm-dev:arm64 libxrandr-dev:arm64 libxshmfence-dev:arm64 \
+    libxcb-dri2-0-dev:arm64 libxcb-present-dev:arm64 libxcb-sync-dev:arm64 libxcb-xfixes0-dev:arm64 \
+    libxcb-randr0-dev:arm64 libxcb-shm0-dev:arm64 libxcb-keysyms1-dev:arm64 \
+    libglvnd-dev:arm64 libelf-dev:arm64 libsensors-dev:arm64 python3-ply cmake libpng-dev:arm64 zlib1g-dev:arm64 libwayland-dev:arm64 \
+ && rm -rf /var/lib/apt/lists/*

@@ -1,0 +1,3 @@
+{ "name": "webgltest", "main": "index.html",
+  "chromium-args": "--ignore-gpu-blocklist --use-gl=angle --use-angle=gl --enable-logging=stderr",
+  "window": { "width": 660, "height": 520 } }

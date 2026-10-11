@@ -1,0 +1,13 @@
+FROM debian:trixie
+RUN sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/debian.sources \
+ && dpkg --add-architecture arm64 && apt-get update \
+ && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    crossbuild-essential-arm64 meson ninja-build pkg-config python3-mako python3-yaml \
+    python3-packaging glslang-tools bison flex ccache ca-certificates git \
+    libdrm-dev:arm64 libexpat1-dev:arm64 zlib1g-dev:arm64 libzstd-dev:arm64 libelf-dev:arm64 \
+    libx11-dev:arm64 libxext-dev:arm64 libxfixes-dev:arm64 libxcb1-dev:arm64 libxcb-dri3-dev:arm64 \
+    libxcb-present-dev:arm64 libxcb-randr0-dev:arm64 libxcb-shm0-dev:arm64 libxcb-sync-dev:arm64 \
+    libxcb-xfixes0-dev:arm64 libxshmfence-dev:arm64 libxrandr-dev:arm64 libxxf86vm-dev:arm64 \
+    libx11-xcb-dev:arm64 libwayland-dev:arm64 wayland-protocols libwayland-bin \
+    libudev-dev:arm64 libvulkan-dev:arm64 \
+ && rm -rf /var/lib/apt/lists/*

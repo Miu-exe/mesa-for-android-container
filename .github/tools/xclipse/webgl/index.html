@@ -1,0 +1,71 @@
+<!doctype html>
+<!-- WebGL/PIXI self-check for NW.js on Zink/RADV. Needs pixi.js (v4, e.g. from the npm package pixi.js@4) next to it. -->
+<html><head><meta charset="utf-8"><title>xclipse webgl test</title>
+<style>body{margin:0;background:#222;color:#eee;font:14px monospace}</style>
+<script src="pixi.js"></script></head>
+<body><pre id="log"></pre>
+<script>
+function log(s) { console.log("XTEST " + s); document.getElementById("log").textContent += s + "\n"; }
+function near(p, i, r, g, b) { return Math.abs(p[i]-r) < 8 && Math.abs(p[i+1]-g) < 8 && Math.abs(p[i+2]-b) < 8; }
+
+// 1. Raw WebGL: renderer string, clear, a triangle, readPixels.
+try {
+  const c = document.createElement("canvas"); c.width = c.height = 64;
+  const gl = c.getContext("webgl", {antialias: false, preserveDrawingBuffer: true});
+  if (!gl) throw "no webgl context";
+  const ext = gl.getExtension("WEBGL_debug_renderer_info");
+  log("renderer: " + (ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)));
+  log("version: " + gl.getParameter(gl.VERSION) + " / max tex " + gl.getParameter(gl.MAX_TEXTURE_SIZE));
+  gl.clearColor(0, 0, 1, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+  const sh = (t, s) => { const o = gl.createShader(t); gl.shaderSource(o, s); gl.compileShader(o);
+    if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) throw gl.getShaderInfoLog(o); return o; };
+  const p = gl.createProgram();
+  gl.attachShader(p, sh(gl.VERTEX_SHADER, "attribute vec2 a; void main(){gl_Position=vec4(a,0,1);}"));
+  gl.attachShader(p, sh(gl.FRAGMENT_SHADER, "precision mediump float; void main(){gl_FragColor=vec4(1,0,0,1);}"));
+  gl.linkProgram(p); gl.useProgram(p);
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1]), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  const px = new Uint8Array(4 * 64 * 64); gl.readPixels(0, 0, 64, 64, gl.RGBA, gl.UNSIGNED_BYTE, px);
+  const lo = 4 * (4 * 64 + 4), hi = 4 * (60 * 64 + 60);
+  log("raw webgl: " + (near(px, lo, 255, 0, 0) && near(px, hi, 0, 0, 255) ? "PASS" : "FAIL") +
+      " (tri " + Array.from(px.slice(lo, lo + 4)) + ", clear " + Array.from(px.slice(hi, hi + 4)) + ")");
+} catch (e) { log("raw webgl: ERROR " + e); }
+
+// 2. PIXI v4: graphics, canvas-texture sprite, text, extract.
+let app;
+try {
+  app = new PIXI.Application({width: 640, height: 480, backgroundColor: 0x000000, forceCanvas: false});
+  document.body.appendChild(app.view);
+  log("pixi renderer: " + (app.renderer.type === PIXI.RENDERER_TYPE.WEBGL ? "WebGL" : "Canvas"));
+  const g = new PIXI.Graphics(); g.beginFill(0x00ff00); g.drawRect(0, 0, 100, 100); g.endFill();
+  app.stage.addChild(g);
+  const cv = document.createElement("canvas"); cv.width = cv.height = 32;
+  const cx = cv.getContext("2d"); cx.fillStyle = "#ff00ff"; cx.fillRect(0, 0, 32, 32);
+  const sp = new PIXI.Sprite(PIXI.Texture.fromCanvas(cv)); sp.position.set(200, 0); sp.scale.set(2);
+  app.stage.addChild(sp);
+  const tx = new PIXI.Text("PIXI", {fill: 0xffffff, fontSize: 32}); tx.position.set(300, 0);
+  app.stage.addChild(tx);
+  const rt = PIXI.RenderTexture.create(640, 480);
+  app.renderer.render(app.stage, rt);
+  const p = app.renderer.extract.pixels(rt);
+  const at = (x, y) => 4 * (y * 640 + x);
+  const ok1 = near(p, at(50, 50), 0, 255, 0), ok2 = near(p, at(230, 30), 255, 0, 255);
+  log("pixi draw: " + (ok1 && ok2 ? "PASS" : "FAIL") + " (rect " + Array.from(p.slice(at(50,50), at(50,50)+4)) +
+      ", sprite " + Array.from(p.slice(at(230,30), at(230,30)+4)) + ")");
+} catch (e) { log("pixi: ERROR " + e); }
+
+// 3. Stress: 2000 moving sprites for 8 s, report FPS.
+try {
+  const tex = PIXI.Texture.WHITE, sprites = [];
+  for (let i = 0; i < 2000; i++) {
+    const s = new PIXI.Sprite(tex); s.tint = Math.random() * 0xffffff; s.width = s.height = 12;
+    s.x = Math.random() * 640; s.y = 120 + Math.random() * 360; s.vx = Math.random() * 4 - 2;
+    app.stage.addChild(s); sprites.push(s);
+  }
+  let frames = 0; const t0 = performance.now();
+  app.ticker.add(() => { frames++; for (const s of sprites) { s.x += s.vx; if (s.x < 0 || s.x > 640) s.vx = -s.vx; } });
+  setTimeout(() => { log("stress fps: " + (frames * 1000 / (performance.now() - t0)).toFixed(1)); log("DONE"); if (typeof nw !== "undefined") setTimeout(() => nw.App.quit(), 500); }, 8000);
+} catch (e) { log("stress: ERROR " + e); log("DONE"); }
+</script></body></html>

@@ -1,0 +1,151 @@
+diff --git a/src/amd/common/ac_cmdbuf.c b/src/amd/common/ac_cmdbuf.c
+index e5b1f17ed54..70d87ecd2bb 100644
+--- a/src/amd/common/ac_cmdbuf.c
++++ b/src/amd/common/ac_cmdbuf.c
+@@ -456,7 +456,7 @@ gfx10_init_graphics_preamble_state(const struct ac_preamble_state *state,
+       ac_pm4_set_reg_idx3(pm4, R_00B104_SPI_SHADER_PGM_RSRC4_VS,
+                           ac_apply_cu_en(S_00B104_CU_EN(0xffff), /* CUs 16-31 */
+                                          C_00B104_CU_EN, 16, info));
+-      ac_pm4_set_reg(pm4, R_00B1C0_SPI_SHADER_REQ_CTRL_VS, 0);
++      ac_pm4_set_reg(pm4, R_00B1C0_SPI_SHADER_REQ_CTRL_VS, info->xclipse_exp & XCLIPSE_EXP_REQ_CTRL_VS ? 7 : 0);
+       ac_pm4_set_reg(pm4, R_00B1C8_SPI_SHADER_USER_ACCUM_VS_0, 0);
+       ac_pm4_set_reg(pm4, R_00B1CC_SPI_SHADER_USER_ACCUM_VS_1, 0);
+       ac_pm4_set_reg(pm4, R_00B1D0_SPI_SHADER_USER_ACCUM_VS_2, 0);
+@@ -596,6 +596,12 @@ gfx10_init_graphics_preamble_state(const struct ac_preamble_state *state,
+                   S_028C50_MAX_DEALLOCS_IN_WAVE(info->gfx_level >= GFX11 ? 16 : info->is_xclipse ? 256 : 512));
+    if (info->is_xclipse) /* as programmed by Samsung's driver */
+       ac_pm4_set_reg(pm4, R_028C5C_VGT_OUT_DEALLOC_CNTL, 16);
++   if (info->xclipse_exp & XCLIPSE_EXP_CB_RMI)
++      ac_pm4_set_reg(pm4, R_028410_CB_RMI_GL2_CACHE_CONTROL, 0x800040);
++   if (info->xclipse_exp & XCLIPSE_EXP_BINNER_1_2) {
++      ac_pm4_set_reg(pm4, R_028C48_PA_SC_BINNER_CNTL_1, 0x3ff0154);
++      ac_pm4_set_reg(pm4, R_028C54_PA_SC_BINNER_CNTL_2, 0xc00000);
++   }
+    if (info->gfx_level < GFX11)
+       ac_pm4_set_reg(pm4, R_028C58_VGT_VERTEX_REUSE_BLOCK_CNTL, 14); /* Reuse for legacy (non-NGG) only. */
+ 
+diff --git a/src/amd/common/ac_gpu_info.c b/src/amd/common/ac_gpu_info.c
+index 942ea251742..391b3e70784 100644
+--- a/src/amd/common/ac_gpu_info.c
++++ b/src/amd/common/ac_gpu_info.c
+@@ -873,6 +873,8 @@ ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
+     * registers are GFX10.3, but the shader cores decode GFX11 instruction encodings.
+     */
+    info->is_xclipse = info->family == CHIP_VANGOGH && !info->pci.valid;
++   if (info->is_xclipse && getenv("RADV_XCLIPSE_EXP"))
++      info->xclipse_exp = strtoul(getenv("RADV_XCLIPSE_EXP"), NULL, 0);
+ 
+    /* The kernel can split large buffers in VRAM but not in GTT, so large
+     * allocations can fail or cause buffer movement failures in the kernel.
+diff --git a/src/amd/common/ac_gpu_info.h b/src/amd/common/ac_gpu_info.h
+index 1d6fdeb1a0b..f3f827fa793 100644
+--- a/src/amd/common/ac_gpu_info.h
++++ b/src/amd/common/ac_gpu_info.h
+@@ -244,6 +244,7 @@ struct radeon_info {
+    enum radeon_family family;
+    enum amd_gfx_level gfx_level;
+    bool is_xclipse; /* Samsung Xclipse (amdgpu-derived "sgpu" kernel driver) */
++   uint32_t xclipse_exp; /* XCLIPSE_EXP_*: temporary hang experiments (RADV_XCLIPSE_EXP) */
+    uint32_t family_id;
+    uint32_t chip_external_rev;
+    uint32_t chip_rev; /* 0 = A0, 1 = A1, etc. */
+@@ -579,6 +580,18 @@ uint32_t ac_gfx103_get_cu_mask_ps(const struct radeon_info *info);
+  */
+ #define AC_MESH_SCRATCH_ENTRY_BYTES (160 * 1024)
+ 
++/* Temporary: Samsung-like register settings for the Xclipse startup hang hunt, enabled with
++ * RADV_XCLIPSE_EXP=<mask>.
++ */
++#define XCLIPSE_EXP_GE_WAVE32     (1u << 0) /* NGG in wave32 (VGT_SHADER_STAGES_EN.GS_W32_EN) */
++#define XCLIPSE_EXP_NO_PC_ALLOC   (1u << 1) /* GE_PC_ALLOC = 0 */
++#define XCLIPSE_EXP_BINNER_LEGACY (1u << 2) /* PA_SC_BINNER_CNTL_0 = Samsung (DISABLE_BINNING_USE_LEGACY_SC) */
++#define XCLIPSE_EXP_NGG_SUBGRP    (1u << 3) /* GE_NGG_SUBGRP_CNTL.THDS_PER_SUBGRP = 256 */
++#define XCLIPSE_EXP_REQ_CTRL_VS   (1u << 4) /* SPI_SHADER_REQ_CTRL_VS = 7 */
++#define XCLIPSE_EXP_CB_RMI        (1u << 5) /* CB_RMI_GL2_CACHE_CONTROL = 0x800040 */
++#define XCLIPSE_EXP_NGG_GS_MODE   (1u << 6) /* VGT_GS_MODE = 0x200033 with NGG */
++#define XCLIPSE_EXP_BINNER_1_2    (1u << 7) /* PA_SC_BINNER_CNTL_1/_2 = Samsung */
++
+ #ifdef __cplusplus
+ }
+ #endif
+diff --git a/src/amd/vulkan/radv_cmd_buffer.c b/src/amd/vulkan/radv_cmd_buffer.c
+index 6566c53ce6f..3ad34604d14 100644
+--- a/src/amd/vulkan/radv_cmd_buffer.c
++++ b/src/amd/vulkan/radv_cmd_buffer.c
+@@ -2600,6 +2600,8 @@ radv_get_disabled_binning_state(struct radv_cmd_buffer *cmd_buffer)
+                             S_028C44_BIN_SIZE_X_EXTEND(2) |                                /* 128 */
+                             S_028C44_BIN_SIZE_Y_EXTEND(min_bytes_per_pixel <= 4 ? 2 : 1) | /* 128 or 64 */
+                             S_028C44_DISABLE_START_OF_PRIM(1) | S_028C44_FLUSH_ON_BINNING_TRANSITION(1);
++      if (pdev->info.xclipse_exp & XCLIPSE_EXP_BINNER_LEGACY)
++         pa_sc_binner_cntl_0 = 0x19fce923; /* as programmed by Samsung's driver */
+    } else {
+       pa_sc_binner_cntl_0 =
+          S_028C44_BINNING_MODE(V_028C44_DISABLE_BINNING_USE_LEGACY_SC) | S_028C44_DISABLE_START_OF_PRIM(1) |
+@@ -2862,6 +2864,13 @@ radv_emit_vgt_gs_mode(struct radv_cmd_buffer *cmd_buffer)
+    unsigned vgt_primitiveid_en = 0;
+    uint32_t vgt_gs_mode = 0;
+ 
++   if (info->is_ngg && (pdev->info.xclipse_exp & XCLIPSE_EXP_NGG_GS_MODE)) {
++      radeon_begin(cs);
++      radeon_opt_set_context_reg(R_028A40_VGT_GS_MODE, AC_TRACKED_VGT_GS_MODE, 0x200033);
++      radeon_end();
++      return;
++   }
++
+    if (info->is_ngg)
+       return;
+ 
+@@ -3747,7 +3756,8 @@ radv_emit_vgt_shader_config_gfx6(struct radv_cmd_buffer *cmd_buffer, const struc
+ 
+    if (pdev->info.gfx_level >= GFX10) {
+       stages |= S_028B54_HS_W32_EN(key->hs_wave32) | S_028B54_GS_W32_EN(key->gs_wave32) |
+-                S_028B54_VS_W32_EN(pdev->info.gfx_level < GFX11 && key->vs_wave32);
++                S_028B54_VS_W32_EN(pdev->info.gfx_level < GFX11 && key->vs_wave32 &&
++                                  !(pdev->info.is_xclipse && key->ngg));
+       /* Legacy GS only supports Wave64. Read it as an implication. */
+       assert(!(key->gs && !key->ngg) || !key->gs_wave32);
+    }
+diff --git a/src/amd/vulkan/radv_physical_device.c b/src/amd/vulkan/radv_physical_device.c
+index 622a8484b29..84eb4dfe9cd 100644
+--- a/src/amd/vulkan/radv_physical_device.c
++++ b/src/amd/vulkan/radv_physical_device.c
+@@ -2532,7 +2532,7 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
+    if (pdev->info.is_xclipse) {
+       pdev->cs_wave_size = 64;
+       pdev->ps_wave_size = 64;
+-      pdev->ge_wave_size = 64;
++      pdev->ge_wave_size = pdev->info.xclipse_exp & XCLIPSE_EXP_GE_WAVE32 ? 32 : 64;
+       pdev->rt_wave_size = 64;
+    }
+ 
+diff --git a/src/amd/vulkan/radv_shader.c b/src/amd/vulkan/radv_shader.c
+index 846c6b02158..474f25efe8c 100644
+--- a/src/amd/vulkan/radv_shader.c
++++ b/src/amd/vulkan/radv_shader.c
+@@ -1679,6 +1679,8 @@ radv_precompute_registers_hw_vs(struct radv_device *device, struct radv_shader *
+          const uint32_t oversub_pc_lines = late_alloc_wave64 ? pdev->info.pc_lines / 4 : 0;
+ 
+          regs->ge_pc_alloc = S_030980_OVERSUB_EN(oversub_pc_lines > 0) | S_030980_NUM_PC_LINES(oversub_pc_lines - 1);
++         if (pdev->info.xclipse_exp & XCLIPSE_EXP_NO_PC_ALLOC)
++            regs->ge_pc_alloc = 0;
+ 
+          /* Required programming for tessellation (legacy pipeline only). */
+          if (shader->info.stage == MESA_SHADER_TESS_EVAL) {
+@@ -1803,6 +1805,8 @@ radv_precompute_registers_hw_ngg(struct radv_device *device, struct radv_shader
+       }
+ 
+       regs->ge_pc_alloc = S_030980_OVERSUB_EN(oversub_pc_lines > 0) | S_030980_NUM_PC_LINES(oversub_pc_lines - 1);
++      if (pdev->info.xclipse_exp & XCLIPSE_EXP_NO_PC_ALLOC)
++         regs->ge_pc_alloc = 0;
+    }
+ 
+    unsigned idx_format = V_028708_SPI_SHADER_1COMP;
+@@ -1843,6 +1847,8 @@ radv_precompute_registers_hw_ngg(struct radv_device *device, struct radv_shader
+ 
+    regs->ngg.ge_ngg_subgrp_cntl =
+       S_028B4C_PRIM_AMP_FACTOR(info->ngg_info.prim_amp_factor) | S_028B4C_THDS_PER_SUBGRP(0); /* for fast launch */
++   if (pdev->info.xclipse_exp & XCLIPSE_EXP_NGG_SUBGRP)
++      regs->ngg.ge_ngg_subgrp_cntl |= S_028B4C_THDS_PER_SUBGRP(256);
+ 
+    regs->vgt_gs_instance_cnt = S_028B90_CNT(gs_num_invocations) | S_028B90_ENABLE(gs_num_invocations > 1) |
+                                S_028B90_EN_MAX_VERT_OUT_PER_GS_INSTANCE(info->ngg_info.max_vert_out_per_gs_instance);
