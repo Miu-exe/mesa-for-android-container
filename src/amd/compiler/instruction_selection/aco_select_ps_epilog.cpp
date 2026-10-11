@@ -410,13 +410,16 @@ select_ps_epilog(Program* program, void* pinfo, ac_shader_config* config,
    bool has_mrtz_samplemask = einfo->samplemask.used && !einfo->kill_samplemask;
    bool has_mrtz_export =
       has_mrtz_depth || has_mrtz_stencil || has_mrtz_samplemask || has_mrtz_alpha;
-   if (has_mrtz_export) {
-      Temp depth = has_mrtz_depth ? get_arg(&ctx, einfo->depth) : Temp();
-      Temp stencil = has_mrtz_stencil ? get_arg(&ctx, einfo->stencil) : Temp();
-      Temp samplemask = has_mrtz_samplemask ? get_arg(&ctx, einfo->samplemask) : Temp();
-
+   /* Samsung's compiler always makes the depth export the final one on Xclipse (like
+    * ac_nir_lower_ps_late's mrtz_after_color). GFX11 dual-source blending expects the color
+    * exports last.
+    */
+   const bool mrtz_last = program->dev.gfx11_encoding_only && !einfo->mrt0_is_dual_src;
+   Temp depth = has_mrtz_depth ? get_arg(&ctx, einfo->depth) : Temp();
+   Temp stencil = has_mrtz_stencil ? get_arg(&ctx, einfo->stencil) : Temp();
+   Temp samplemask = has_mrtz_samplemask ? get_arg(&ctx, einfo->samplemask) : Temp();
+   if (has_mrtz_export && !mrtz_last)
       export_fs_mrtz(&ctx, einfo, depth, stencil, samplemask, mrtz_alpha);
-   }
 
    /* Export all color render targets */
    struct aco_export_mrt mrts[MAX_DRAW_BUFFERS];
@@ -468,6 +471,9 @@ select_ps_epilog(Program* program, void* pinfo, ac_shader_config* config,
    } else if (!has_mrtz_export && !einfo->skip_null_export) {
       create_fs_null_export(&ctx);
    }
+
+   if (has_mrtz_export && mrtz_last)
+      export_fs_mrtz(&ctx, einfo, depth, stencil, samplemask, mrtz_alpha);
 
    program->config->float_mode = program->blocks[0].fp_mode.val;
 
