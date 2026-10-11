@@ -89,7 +89,11 @@ After rebuilding the driver, delete the shader caches (`~/.cache/mesa_shader_cac
 
 ## Credits and license
 
-- [Mesa](https://gitlab.freedesktop.org/mesa/mesa), MIT license.
+The Xclipse changes, tools and documents on this branch are under the [MIT license](../LICENSE).
+Mesa's own files keep their licenses, mostly MIT as well (see [docs/license.rst](../docs/license.rst)
+and the [licenses](../licenses) folder).
+
+- [Mesa](https://gitlab.freedesktop.org/mesa/mesa).
 - [lfdevs](https://github.com/lfdevs/mesa-for-android-container): the Mesa for Android Container
   fork this branch is built on.
 - [KiralyCraft](https://github.com/KiralyCraft/termux-x11): the Termux:X11 fork with DRI3.
