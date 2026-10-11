@@ -9,12 +9,8 @@ Related documents:
   in detail.
 - [`.github/tools/xclipse/README.md`](../../tools/xclipse/README.md): build scripts, test programs,
   capture tools and the oracle workflow.
-- OMORI (the game on NW.js/WebGL through Zink: launcher app, touch controls, game build) lives on
-  the `omori` branch: its `.github/docs/common/xclipse-920-omori.md`, `.github/tools/xclipse/omori/`
-  and `omori-build/` (private, Git LFS).
-
-Branch `adreno-main` on `git.miuthecat.uk/miu/mesa-xclipse-radv`. Last state of this document:
-2026-10-10, driver commit `141b5bda172`.
+Branch `xclipse`: the Xclipse work on top of lfdevs' `adreno-main` (mesa-for-android-container).
+Last state of this document: 2026-10-11.
 
 ---
 
@@ -23,12 +19,12 @@ Branch `adreno-main` on `git.miuthecat.uk/miu/mesa-xclipse-radv`. Last state of 
 | Area | State |
 | :-- | :-- |
 | Vulkan through RADV (Debian container in PRoot) | Works: vkcube (DRI3 and CPU copy), compute, textures, MSAA partly broken |
-| OpenGL | OpenGL 4.6 / GLES 3.2 through Zink on RADV; draws correctly since `9eab0365907` (the old glmark2 score of ~109 was measured while vertex buffer draws drew nothing) |
-| WebGL | NW.js 0.111.1 → ANGLE → Zink → RADV works; OMORI is playable (~45 FPS), see the `omori` branch |
+| OpenGL | OpenGL 4.6 / GLES 3.2 through Zink on RADV; draws correctly since `112b76cb3b4` (the old glmark2 score of ~109 was measured while vertex buffer draws drew nothing) |
+| WebGL | NW.js → ANGLE → Zink → RADV works; an RPG Maker MV game (PIXI.js/WebGL) plays at ~60 FPS |
 | Presentation | DRI3/Present through KiralyCraft's Termux:X11 fork; vkcube ~162 FPS uncapped |
 | Vulkan CTS | Partially run; 4 groups being compared with Samsung's driver, many hangs fixed |
-| radeonsi (native GL) | Ported on the `opengl` branch (2026-10-11): GL 4.6 / GLES 3.2, glmark2 validates, OMORI runs; see its `xclipse-920-opengl.md` |
-| GPU hangs | Reboot the whole phone. The **random reset at process start** (§6.0) is fixed since `141b5bda172` (no user fence): none in 1000 process starts (was ~1 in 6, then ~1 in 60) |
+| radeonsi (native GL) | Not part of this branch; a port is in progress separately (§6.5) |
+| GPU hangs | Reboot the whole phone. The **random reset at process start** (§6.0) is fixed since `43eecc12767` (no user fence): none in 1000 process starts (was ~1 in 6, then ~1 in 60) |
 
 ### The key insight
 
@@ -55,27 +51,30 @@ it submits for the same work, compare with RADV, make RADV match.
 
 | Commit | What and why |
 | :-- | :-- |
-| `fbc4ae0af1c` radv: allow amdgpu-compatible GPUs on the platform bus | sgpu is a platform device without PCI info |
-| `dbfbb9942a0` ac/gpu_info: support Samsung Xclipse (sgpu) kernel quirks | accept DRM 3.40 for non-PCI devices; no VRAM means integrated |
-| `8a9077a8cf7` radv: don't create a private SDMA blit queue without SDMA | no SDMA engine on Xclipse |
-| `0fb1ba88259` radv,aco: support Samsung Xclipse 920 shader ISA | `is_xclipse`, `gfx11_isa_encoding`: ACO emits GFX11 encodings, wave64, no `s_delay_alu` |
-| `0b4c08f06b2` ac,radv: GFX11 resource formats and packed local IDs | `ac_rsrc_gfx_level()` for all descriptors |
-| `de8fdfb6310` radv: lower PS exports for the GFX11 ISA | packed color exports without COMPR |
-| `3b6c2cadd7f` radv/amdgpu: NO_CPU_ACCESS only with VRAM | Termux:X11 mmaps DRI3 buffers |
-| `8b32752103c` ac/descriptors: GFX11 image descriptor fields | MAX_MIP/MIN_LOD placement, no RESOURCE_LEVEL; fixed texture sampling |
-| `1f3de41eb30` aco: no VOPD on encoding-only GFX11 | VOPD in wave32 hung the GPU |
-| `42b96405c78` aco,ac/nir,radv: fix pixel shader discard | **VM bit** on final export; discard exit clears exec + `s_endpgm 1`; MRTZ after colors |
-| `c4e2f53fbb6` radv: drop depth/stencil exports with early fragment tests | Z export + DEPTH_BEFORE_SHADER hung the GPU |
-| `d0dd42ec1a3` ac,radv: GFX11 occlusion query events | ZPASS_DONE is ignored; all 64 occlusion_query tests pass |
-| `04121b95452` ac/gpu_info: NGG passthrough without GS_ALLOC_REQ | large points hung; all 308 clipping tests pass |
-| `e9f9af9ad21` radv: implicit primitive ID per vertex | per-primitive export hung fast-linked pipelines |
-| `9eab0365907` radv: GFX11 vertex formats in vertex buffer descriptors | dynamic vertex input (Zink, ANGLE) read every attribute as 0: no GL/WebGL draws |
-| `90a21ed6495` radv: emulate CLEAR_STATE on Xclipse | the kernel never sets up the clear state buffer; registers RADV assumed reset kept the previous GPU user's values → random hangs at process start |
-| `a7a4d4335de` ac,radv: program Xclipse like Samsung's driver | no late alloc / PC oversubscription, smaller PC dealloc limits, no binning, no RB alternation, no CP DMA prefetch, EMIT_MEM_SYNC, HIGH ctx priority; made the random hang rarer |
-| `141b5bda172` radv/amdgpu: don't use a user fence on Xclipse | the kernel's GART TLB flush for the user fence BO hit the power-gated GPU and reset the phone: **the** random reset at process start (§6.0) |
+| `466659f0cf0` radv: allow amdgpu-compatible GPUs on the platform bus | sgpu is a platform device without PCI info |
+| `34fe0488460` ac/gpu_info: support Samsung Xclipse (sgpu) kernel quirks | accept DRM 3.40 for non-PCI devices; no VRAM means integrated |
+| `b34c0860c8f` radv: don't create a private SDMA blit queue without SDMA | no SDMA engine on Xclipse |
+| `015bd3de62f` radv,aco: support Samsung Xclipse 920 shader ISA | `is_xclipse`, `gfx11_isa_encoding`: ACO emits GFX11 encodings, wave64, no `s_delay_alu` |
+| `d832f0cde89` ac,radv: GFX11 resource formats and packed local IDs | `ac_rsrc_gfx_level()` for all descriptors |
+| `f5c49c3708e` radv: lower PS exports for the GFX11 ISA | packed color exports without COMPR |
+| `4cab3720197` radv/amdgpu: NO_CPU_ACCESS only with VRAM | Termux:X11 mmaps DRI3 buffers |
+| `6e20b6b2d7a` ac/descriptors: GFX11 image descriptor fields | MAX_MIP/MIN_LOD placement, no RESOURCE_LEVEL; fixed texture sampling |
+| `72f8f4ce4ad` aco: no VOPD on encoding-only GFX11 | VOPD in wave32 hung the GPU |
+| `5da944a159e` aco,ac/nir,radv: fix pixel shader discard | **VM bit** on final export; discard exit clears exec + `s_endpgm 1`; MRTZ after colors |
+| `67ee88e96f0` radv: drop depth/stencil exports with early fragment tests | Z export + DEPTH_BEFORE_SHADER hung the GPU |
+| `8fa3abc2dea` ac,radv: GFX11 occlusion query events | ZPASS_DONE is ignored; all 64 occlusion_query tests pass |
+| `cb58ba1214e` ac/gpu_info: NGG passthrough without GS_ALLOC_REQ | large points hung; all 308 clipping tests pass |
+| `0a3c0902c22` radv: implicit primitive ID per vertex | per-primitive export hung fast-linked pipelines |
+| `112b76cb3b4` radv: GFX11 vertex formats in vertex buffer descriptors | dynamic vertex input (Zink, ANGLE) read every attribute as 0: no GL/WebGL draws |
+| `f0d7f5200a7` radv: emulate CLEAR_STATE on Xclipse | the kernel never sets up the clear state buffer; registers RADV assumed reset kept the previous GPU user's values → random hangs at process start |
+| `7c01ad9de2e` ac,radv: program Xclipse like Samsung's driver | no late alloc / PC oversubscription, smaller PC dealloc limits, no binning, no RB alternation, no CP DMA prefetch, EMIT_MEM_SYNC, HIGH ctx priority; made the random hang rarer |
+| `43eecc12767` radv/amdgpu: don't use a user fence on Xclipse | the kernel's GART TLB flush for the user fence BO hit the power-gated GPU and reset the phone: **the** random reset at process start (§6.0) |
 
-Tools/doc commits: `b26c163a650`, `694bbf055d8`, `cedab838001`, `8b6837dfc17`, `8073294ac3e`,
-`14d834a0528`, `4e5e040452a`.
+| `8b64d112607` vulkan/wsi/x11: add MESA_VK_WSI_X11_WAIT_READY | Termux:X11 copies DRI3 buffers without waiting for the GPU; with `MESA_VK_WSI_X11_WAIT_READY=1` every present waits for its fence (no partly drawn frames) |
+| `2c169da06b3` radv/amdgpu: optional sgpu MIN_FREQ_LOCK chunk | `RADV_XCLIPSE_MIN_FREQ=<kHz>` asks sgpu for a minimum GPU clock while submitting (off by default; no FPS gain seen) |
+| `3ff2ea17f9a` aco: export MRTZ after the colors in PS epilogs | the same export order as the main-part lowering, for PS epilogs |
+
+The tools and these documents are the commits after the driver commits on this branch.
 
 All Xclipse-specific behaviour is gated on `radeon_info::is_xclipse`
 (`family == CHIP_VANGOGH && !pci.valid`) or `compiler_info.gfx11_isa_encoding`, so normal AMD GPUs
@@ -95,14 +94,11 @@ are unaffected.
 ### 3.2 Get the code and build images
 
 ```bash
-git clone ssh://git@git.miuthecat.uk:63000/miu/mesa-xclipse-radv.git mesa-for-android-container
-cd mesa-for-android-container && git checkout adreno-main
+git clone <this repository> mesa-for-android-container
+cd mesa-for-android-container && git checkout xclipse
 cd .github/tools/xclipse
 DOCKER="sudo docker" docker/build-images.sh        # mesa-cross-arm64 and mesa-cross-arm64-gl
 ```
-
-Gitea SSH listens on port **63000** (port 22 on that host is the machine's own OpenSSH). Add the
-new computer's public key in Gitea → Settings → SSH Keys.
 
 ### 3.3 Android NDK (for Samsung-driver tools and the Android CTS)
 
@@ -123,7 +119,7 @@ Keep build directories **out of `/tmp`** (tmpfs is wiped on reboot); the scripts
 Host phone
     HostName 127.0.0.1
     Port 8022
-    User u0_a138
+    User <termux user, `whoami` in Termux>
     IdentityFile ~/.ssh/xclipse_phone
     IdentitiesOnly yes
     HostKeyAlias xclipse-phone
@@ -137,7 +133,7 @@ Wi-Fi details (still useful without a cable):
 
 - Phone: Termux, `pkg install openssh proot-distro`, Debian 13 container
   (`proot-distro install debian`). The installed Termux is the **Google Play build**
-  (user `u0_a138`).
+  (its user is `u0_<n>`, see `whoami`).
 - Add the new computer's key to `~/.ssh/authorized_keys` in Termux, then start `termux-wake-lock; sshd`.
   Use a key **without a passphrase** for the phone (e.g. `ssh-keygen -t ed25519 -N "" -f
   ~/.ssh/xclipse_phone`): the scripts run ssh non-interactively.
@@ -145,9 +141,9 @@ Wi-Fi details (still useful without a cable):
 
   ```
   Host phone
-      HostName 192.168.0.X
+      HostName <phone IP>
       Port 8022
-      User u0_a138
+      User <termux user, `whoami` in Termux>
       IdentityFile ~/.ssh/xclipse_phone
       IdentitiesOnly yes
   ```
@@ -289,11 +285,11 @@ Measured with `tests/vkloop.sh` (`DYN=1 vkloop.sh 100 /opt/radv/vkvbo`):
 
 | Build | Runs before the reset |
 | :-- | :-- |
-| up to `9eab0365907` | 8, 8, 5, 1, 13, 2, 7 (≈ 1 in 6) |
-| + CLEAR_STATE emulation (`90a21ed6495`) | 43, 18 |
-| + Samsung's settings (`a7a4d4335de`) | 62, 117 (with 8 more Samsung register values, see below) |
+| up to `112b76cb3b4` | 8, 8, 5, 1, 13, 2, 7 (≈ 1 in 6) |
+| + CLEAR_STATE emulation (`f0d7f5200a7`) | 43, 18 |
+| + Samsung's settings (`7c01ad9de2e`) | 62, 117 (with 8 more Samsung register values, see below) |
 | same, compute only (`vkloop.sh 300 /opt/radv/vkcomp store 1`) | 48 |
-| + no user fence (`141b5bda172`) | **500/500 compute, 500/500 vkvbo** |
+| + no user fence (`43eecc12767`) | **500/500 compute, 500/500 vkvbo** |
 | Samsung's driver (`tests/samloop.sh 300`) | 300/300 |
 
 **Cause.** It was never a GPU hang. The previous boot's kernel log (§4 step 7) shows the same
@@ -310,9 +306,9 @@ fence BO** of the CS fence chunk (`amdgpu_cs.c`: `amdgpu_ttm_alloc_gart(uf)`): R
 every submission, Samsung's driver never does. When the BO is unbound (context destroyed / process
 exit), the TLB flush can land while sgpu has power-gated the GPU between jobs (IFPO,
 `vangogh_lite_ifpo_power_off` after the last job), and the phone resets. RADV never reads the user
-fence, so `141b5bda172` drops it on Xclipse.
+fence, so `43eecc12767` drops it on Xclipse.
 
-What this means for the earlier work: the GPU-state fixes (`90a21ed6495`, `a7a4d4335de`) made the
+What this means for the earlier work: the GPU-state fixes (`f0d7f5200a7`, `7c01ad9de2e`) made the
 reset rarer, most likely by changing the timing of the first jobs, not by fixing a GPU hang. They match
 Samsung's driver and stay. Also tried on 2026-10-10 without effect on the rate (patch in
 `.github/tools/xclipse/experiments/`): NGG in wave32, `GE_PC_ALLOC = 0`, legacy-SC
@@ -366,14 +362,11 @@ shaders. Re-test with wave32 allowed; it may improve performance.
   far; keep in mind.
 - Samsung programs `PA_SC_BINNER_CNTL_2` (`0x00c00800`) and zeroes `0x28060`/`0x286dc`; RADV leaves
   them alone. No visible effect found yet.
-- radeonsi port (native GL without Zink): **done on the `opengl` branch** (2026-10-11), documented in
-  its `xclipse-920-opengl.md`; the notes below were the plan. Motivation: Zink translates every GL call on the
-  caller's thread; for OMORI (WebGL → ANGLE → GL → Zink → RADV) that is Chrome's GPU thread at ~67%
-  of a core, one of the two biggest CPU costs left (the other is proot; see the `omori` branch doc
-  §6). Skipping GL with ANGLE's Vulkan backend doesn't help: Zink's worker threads go away, but the
-  total CPU stays the same and the GPU load goes up (2026-10-11, `omori` doc §6 6a); a native GL
-  driver is the remaining way to cut that cost. Builds without LLVM already
-  (`scripts/build-mesa-gl.sh`); radeonsi would need ACO and the
+- radeonsi port (native GL without Zink; in progress separately, not on this branch). Motivation:
+  Zink translates every GL call on the caller's thread; for a WebGL game (WebGL → ANGLE → GL → Zink
+  → RADV) that is Chrome's GPU thread at ~67% of a core. Skipping GL with ANGLE's Vulkan backend
+  doesn't help: Zink's worker threads go away, but the total CPU stays the same and the GPU load
+  goes up. Builds without LLVM already (`scripts/build-mesa-gl.sh`); radeonsi needs ACO and the
   same hybrid handling as RADV, most of it in the shared `src/amd/common` code but wired up
   separately in radeonsi:
   - GFX11 instruction encoding in ACO, wave64, no VOPD/`s_delay_alu` (shared with RADV via

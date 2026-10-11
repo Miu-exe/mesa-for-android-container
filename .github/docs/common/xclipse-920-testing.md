@@ -18,7 +18,7 @@ a single device and is **experimental**.
 | Kernel GPU driver | Samsung `sgpu`, reports itself as `amdgpu` DRM **3.40.0** |
 | Container | Debian 13 (trixie) in PRoot (`proot-distro`) inside Termux |
 | X server | Termux:X11, [KiralyCraft `fix/present-vblank-pacing-minimal`](https://github.com/KiralyCraft/termux-x11/tree/fix/present-vblank-pacing-minimal) (DRI3 + Present) |
-| Mesa | this repository, branch `adreno-main` + the Xclipse commits (26.1.0-devel) |
+| Mesa | this repository, branch `xclipse` (lfdevs' `adreno-main` + the Xclipse commits, 26.1.0-devel) |
 
 ## How the GPU appears to Mesa
 
